@@ -1,0 +1,11 @@
+MANIFEST
+MANIFEST.SKIP
+Makefile.PL
+TODO
+findmissing
+lib/Net/FTP/RetrHandle.pm
+t/00compile.t
+t/10remote.t
+t/11tie.t
+t/bigtest.pl
+t/ftpconn.pl
