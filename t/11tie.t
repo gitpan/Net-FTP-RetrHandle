@@ -2,10 +2,10 @@
 
 use strict;
 
-use constant CPAN_HOST => 'ftp.cpan.org'; # 'cpan.cse.msu.edu';
-use constant CPAN_DIR => '/pub/CPAN'; # '/';
-#use constant CPAN_HOST => 'cpan.cse.msu.edu';
-#use constant CPAN_DIR => '/';
+#use constant CPAN_HOST => 'ftp.cpan.org'; # 'cpan.cse.msu.edu';
+#use constant CPAN_DIR => '/pub/CPAN'; # '/';
+use constant CPAN_HOST => 'cpan.cse.msu.edu';
+use constant CPAN_DIR => '/';
 use constant CPAN_FILE => 'MIRRORED.BY';
 
 

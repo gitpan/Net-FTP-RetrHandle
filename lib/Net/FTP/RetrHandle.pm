@@ -1,5 +1,5 @@
 package Net::FTP::RetrHandle;
-our $VERSION = '0.1';
+our $VERSION = '0.2';
 
 use warnings;
 use strict;
@@ -43,7 +43,7 @@ An interface compatible with L<IO::Handle|IO::Handle> is provided,
 along with a C<tie>-based interface.
 
 Remember that an FTP server can only do one thing at a time, so make
-ure to C<close> your connection before asking the FTP server to do
+sure to C<close> your connection before asking the FTP server to do
 nything else.
 
 =head1 CONSTRUCTOR
@@ -106,7 +106,7 @@ sub new
 Most of the methods implemented behave exactly like those from
 L<IO::Handle|IO::Handle>.
 
-These methods are implemented: C<clearerr>, C<close>, C<eof>,
+These methods are implemented: C<binmode>, C<clearerr>, C<close>, C<eof>,
 C<error>, C<getc>, C<getline>, C<getlines>, C<getpos>, C<read>,
 C<seek>, C<setpos>, C<sysseek>, C<tell>, C<ungetc>, C<opened>.
 
@@ -117,7 +117,51 @@ sub opened { 1; }
 sub seek
 {
   my $self = shift;
-  $self->sysseek(@_);
+  my $pos = shift || 0;
+  my $whence = shift || 0;
+  warn "   SEEK: self=$self, pos=$pos, whence=$whence\n"
+    if ($ENV{DEBUG});
+  my $curpos = $self->tell();
+  my $newpos = _newpos($self->tell(),$self->{size},$pos,$whence);
+  my $ret;
+  if ($newpos == $curpos)
+  {
+    return $curpos;
+  }
+  elsif (defined($self->{_buf}) and ($newpos > $curpos) and ($newpos < ($curpos + length($self->{_buf}))))
+  {
+    # Just seeking within the buffer (or not at all)
+    substr($self->{_buf},0,$newpos - $curpos,'');
+    $ret = $newpos;
+  }
+  else
+  {
+    $ret = $self->sysseek($newpos,0);
+    $self->{_buf} = '';
+  }
+  return $ret;
+}
+
+sub _newpos
+{
+  
+  my($curpos,$size,$pos,$whence)=@_;
+  if ($whence == 0) # seek_set
+  {
+    return $pos;
+  }
+  elsif ($whence == 1) # seek_cur
+  {
+    return $curpos + $pos;
+  }
+  elsif ($whence == 2) # seek_end
+  {
+    return $size + $pos;
+  }
+  else
+  {
+    die "Invalid value $whence for whence!";
+  }
 }
 
 sub sysseek
@@ -125,23 +169,11 @@ sub sysseek
   my $self = shift;
   my $pos = shift || 0;
   my $whence = shift || 0;
-  my $newpos;
-  warn "SEEK: self=$self, pos=$pos, whence=$whence\n"
+  warn "SYSSEEK: self=$self, pos=$pos, whence=$whence\n"
     if ($ENV{DEBUG});
-  if ($whence == 0) # seek_set
-  {
-    $newpos = $pos;
-  }
-  elsif ($whence == 1) # seek_cur
-  {
-    $newpos = $self->{nextpos} + $pos;
-  }
-  elsif ($whence == 2) # seek_end
-  {
-    $newpos = $self->{size} + $pos;
-  }
+  my $newpos = _newpos($self->{nextpos},$self->{size},$pos,$whence);
+
   $self->{eof}=undef;
-  $self->{_buf}='';
   return $self->{nextpos}=$newpos;
 }
 
@@ -155,8 +187,8 @@ sub tell
 sub binmode
 {
   my $self = shift;
-  my($mode) = @_;
-  return if (defined($self->{curmode}) && ($self->{curmode} eq '$mode'));
+  my $mode = shift || ':raw';
+  return if (defined($self->{curmode}) && ($self->{curmode} eq $mode));
   if (defined($mode) and $mode eq ':crlf')
   {
     $self->_finish_connection();
@@ -234,6 +266,8 @@ sub sysread
     # They seeked.
     if ($self->{ftp_running})
     {
+      warn "Seek detected, nextpos=$self->{nextpos}, pos=$self->{pos}, MaxSkipSize=$self->{MaxSkipSize}\n"
+	if ($ENV{DEBUG});
       if ($self->{nextpos} > $self->{pos} and ($self->{nextpos} - $self->{pos}) < $self->{MaxSkipSize})
       {
 	my $br = $self->{nextpos}-$self->{pos};
@@ -263,6 +297,8 @@ sub sysread
       }
       else
       {
+	warn "Aborting connection to move to new position\n"
+	  if ($ENV{DEBUG});
 	$self->_finish_connection();
       }
     }
@@ -561,6 +597,12 @@ sub SEEK
 {
   my $self = shift;
   return $self->seek(@_);
+}
+
+sub SYSSEEK
+{
+  my $self = shift;
+  return $self->sysseek(@_);
 }
 
 sub TELL

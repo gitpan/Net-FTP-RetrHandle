@@ -1,5 +1,1 @@
-* Write docs for FTP::AutoReconnect
-* Write docs for FTP::RetrHandle
-
-
-
+* Better regression tests, with mock objects.

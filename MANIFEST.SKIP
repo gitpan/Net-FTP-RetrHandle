@@ -9,3 +9,5 @@ blib
 junk
 mirs.*
 MIRRORED.BY
+^tmp/
+^CVS
